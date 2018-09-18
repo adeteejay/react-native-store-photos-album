@@ -37,10 +37,11 @@ RCT_EXPORT_METHOD(saveToCameraRoll:(NSDictionary *)tag
 {
   NSURLRequest *request = [RCTConvert NSURLRequest:tag[@"uri"]];
   NSString * albumName = [RCTConvert NSString:tag[@"album"]];
+  ALAssetsLibrary *library = [[ALAssetsLibrary alloc] init];
   if ([type isEqualToString:@"video"]) {
     // It's unclear if writeVideoAtPathToSavedPhotosAlbum is thread-safe
     dispatch_async(dispatch_get_main_queue(), ^{
-      [self->_bridge.assetsLibrary writeVideoAtPathToSavedPhotosAlbum:request.URL completionBlock:^(NSURL *assetURL, NSError *saveError) {
+      [library writeVideoAtPathToSavedPhotosAlbum:request.URL completionBlock:^(NSURL *assetURL, NSError *saveError) {
         if (saveError) {
           reject(RCTRNSPAErrorUnableToSave, nil, saveError);
         } else {
@@ -58,7 +59,7 @@ RCT_EXPORT_METHOD(saveToCameraRoll:(NSDictionary *)tag
                                             
       // It's unclear if writeImageToSavedPhotosAlbum is thread-safe
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self->_bridge.assetsLibrary writeImageToSavedPhotosAlbum:loadedImage.CGImage metadata:nil completionBlock:^(NSURL *assetURL, NSError *saveError) {
+        [library writeImageToSavedPhotosAlbum:loadedImage.CGImage orientation: ALAssetOrientationUp completionBlock:^(NSURL *assetURL, NSError *saveError) {
           if (saveError) {
             RCTLogWarn(@"Error saving cropped image: %@", saveError);
             reject(RCTRNSPAErrorUnableToSave, nil, saveError);
@@ -77,7 +78,7 @@ RCT_EXPORT_METHOD(saveToCameraRoll:(NSDictionary *)tag
             };
 
               
-            [self->_bridge.assetsLibrary enumerateGroupsWithTypes:ALAssetsGroupAlbum
+            [library enumerateGroupsWithTypes:ALAssetsGroupAlbum
                         usingBlock:^(ALAssetsGroup *group, BOOL *stop) {
  
                             //compare the names of the albums
@@ -87,7 +88,7 @@ RCT_EXPORT_METHOD(saveToCameraRoll:(NSDictionary *)tag
                                 albumWasFound = YES;
                                 
                                 //get a hold of the photo's asset instance
-                                [self->_bridge.assetsLibrary assetForURL: assetURL 
+                                [library assetForURL: assetURL
                                       resultBlock:^(ALAsset *asset) {
                                                   
                                           //add photo to the target album
@@ -105,10 +106,10 @@ RCT_EXPORT_METHOD(saveToCameraRoll:(NSDictionary *)tag
                             if (group==nil && albumWasFound==NO) {
                                 //photo albums are over, target album does not exist, thus create it
                                 
-                                 ALAssetsLibrary* weakSelf = self->_bridge.assetsLibrary;
+                                 ALAssetsLibrary* weakSelf = library;
  
                                 //create new assets album
-                                [self->_bridge.assetsLibrary addAssetsGroupAlbumWithName:albumName 
+                                [library addAssetsGroupAlbumWithName:albumName
                                                       resultBlock:^(ALAssetsGroup *group) {
                                                                   
                                                           //get the photo's instance
